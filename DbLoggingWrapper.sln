@@ -1,0 +1,41 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DbLoggingWrapper40", "DbLoggingWrapper40\DbLoggingWrapper40.csproj", "{4DA7AB81-9935-49B3-9F90-1109F617DAB6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{1E258089-2D4C-446C-96FE-7F5A5F1E73CD}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\NuGet.Config = .nuget\NuGet.Config
+		.nuget\NuGet.exe = .nuget\NuGet.exe
+		.nuget\NuGet.targets = .nuget\NuGet.targets
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{B939AAB9-6CB9-40C0-B1F0-EA399C743AE9}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		DbLoggingWrapper.nuspec = DbLoggingWrapper.nuspec
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DbLoggingWrapper35", "DbLoggingWrapper35\DbLoggingWrapper35.csproj", "{12FF2664-28D9-47B3-A929-29076F0B1FCA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4DA7AB81-9935-49B3-9F90-1109F617DAB6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4DA7AB81-9935-49B3-9F90-1109F617DAB6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4DA7AB81-9935-49B3-9F90-1109F617DAB6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4DA7AB81-9935-49B3-9F90-1109F617DAB6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{12FF2664-28D9-47B3-A929-29076F0B1FCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{12FF2664-28D9-47B3-A929-29076F0B1FCA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{12FF2664-28D9-47B3-A929-29076F0B1FCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{12FF2664-28D9-47B3-A929-29076F0B1FCA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

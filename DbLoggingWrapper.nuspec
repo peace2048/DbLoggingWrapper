@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>DbLoggingWrapper</id>
+    <version>0.1.0</version>
+    <authors>ochiai</authors>
+    <owners>ochiai</owners>
+    <!--
+    <licenseUrl></licenseUrl>
+    <projectUrl></projectUrl>
+    <iconUrl></iconUrl>
+    <releaseNotes>Summary of changes made in this release of the package.</releaseNotes>
+    -->
+    <description>Data access logging library.</description>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <copyright>Copyright 2015</copyright>
+    <tags></tags>
+    <dependencies>
+      <dependency id="Common.Logging" version="3.2.0" />
+      <dependency id="Common.Logging.Core" version="3.2.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="DbLoggingWrapper35\bin\Release\DbLoggingWrapper.dll" target="lib\net35" />
+    <file src="DbLoggingWrapper35\bin\Release\DbLoggingWrapper.pdb" target="lib\net35" />
+    
+    <file src="DbLoggingWrapper40\bin\Release\DbLoggingWrapper.dll" target="lib\net40" />
+    <file src="DbLoggingWrapper40\bin\Release\DbLoggingWrapper.pdb" target="lib\net40" />
+  </files>
+</package>
