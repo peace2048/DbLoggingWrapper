@@ -53,7 +53,7 @@ namespace DbLoggingWrapper
             try
             {
                 var trans = BaseConnection.BeginTransaction();
-                return trans;
+                return new LoggingTransaction(trans);
             }
             catch (Exception ex)
             {
@@ -119,7 +119,7 @@ namespace DbLoggingWrapper
 
         public override string ToString()
         {
-            return LoggingWrapper.Dump(this);
+            return LoggingWrapper.Dump(BaseConnection);
         }
     }
 }

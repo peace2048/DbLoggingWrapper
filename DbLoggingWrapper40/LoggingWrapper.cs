@@ -31,7 +31,7 @@ namespace DbLoggingWrapper
             {
                 var sb = new StringBuilder();
                 sb.AppendLine(message);
-                sb.AppendLine(wrapper.ToString());
+                sb.Append(wrapper.ToString());
                 Logger.Error(sb.ToString(), ex);
             }
         }
@@ -116,7 +116,7 @@ namespace DbLoggingWrapper
         internal static string Dump(IDbTransaction transaction)
         {
             var sb = new StringBuilder();
-            Dump(transaction);
+            Dump(transaction, sb);
             return sb.ToString();
         }
 

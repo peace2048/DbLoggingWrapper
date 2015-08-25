@@ -175,7 +175,7 @@ namespace DbLoggingWrapper
 
         public override string ToString()
         {
-            return LoggingWrapper.Dump(this);
+            return LoggingWrapper.Dump(BaseCommand);
         }
     }
 }

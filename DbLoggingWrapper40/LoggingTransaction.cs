@@ -24,6 +24,8 @@ namespace DbLoggingWrapper
             get { return BaseTransaction.IsolationLevel; }
         }
 
+        private bool _isExecutedCommitOrRollback = false;
+
         public void Commit()
         {
             try
@@ -31,6 +33,7 @@ namespace DbLoggingWrapper
                 var sw = Stopwatch.StartNew();
                 BaseTransaction.Commit();
                 LoggingWrapper.Trace("トランザクションをコミットしました。", sw);
+                _isExecutedCommitOrRollback = true;
             }
             catch (Exception ex)
             {
@@ -42,7 +45,14 @@ namespace DbLoggingWrapper
         public void Dispose()
         {
             BaseTransaction.Dispose();
-            LoggingWrapper.Trace("トランザクションが破棄(Dispose)されました。");
+            if (_isExecutedCommitOrRollback)
+            {
+                LoggingWrapper.Trace("トランザクションが破棄(Dispose)されました。");
+            }
+            else
+            {
+                LoggingWrapper.Logger.Error("コミットもロールバックも実行されずに、トランザクションが破棄(Dispose)されました。", null);
+            }
         }
 
         public void Rollback()
@@ -52,6 +62,7 @@ namespace DbLoggingWrapper
                 var sw = Stopwatch.StartNew();
                 BaseTransaction.Rollback();
                 LoggingWrapper.Trace("トランザクションをロールバックしました。", sw);
+                _isExecutedCommitOrRollback = true;
             }
             catch (Exception ex)
             {
@@ -62,7 +73,7 @@ namespace DbLoggingWrapper
 
         public override string ToString()
         {
-            return LoggingWrapper.Dump(this);
+            return LoggingWrapper.Dump(BaseTransaction);
         }
     }
 }
