@@ -25,65 +25,20 @@ namespace DbLoggingWrapper
             }
         }
 
-        internal static void Error(object wrapper, string message, Exception ex)
+        public static TCommand TryCast<TCommand>(this IDbCommand command) where TCommand : IDbCommand
         {
-            if (Logger.IsErrorEnabled)
+            try
             {
-                var sb = new StringBuilder();
-                sb.AppendLine(message);
-                sb.Append(wrapper.ToString());
-                Logger.Error(sb.ToString(), ex);
-            }
-        }
-
-        internal static void Error(object wrapper, Func<string> message, Exception ex)
-        {
-            if (Logger.IsErrorEnabled)
-            {
-                Error(wrapper, message(), ex);
-            }
-        }
-
-        internal static void Trace(string message)
-        {
-            Logger.Trace(message);
-        }
-
-        internal static void Trace(string message, Stopwatch stopwatch)
-        {
-            Logger.Trace(f => f("{0} 実行時間:{1}", message, stopwatch.Elapsed));
-        }
-
-        internal static void Trace(Func<string> message, Stopwatch stopwatch)
-        {
-            if (Logger.IsTraceEnabled)
-            {
-                Trace(message(), stopwatch);
-            }
-        }
-
-        internal static void Trace(string message, IDbCommand command, Stopwatch stopwatch)
-        {
-            if (Logger.IsTraceEnabled)
-            {
-                var sb = new StringBuilder(message);
-                sb.Append(" 実行時間:").Append(stopwatch.Elapsed).AppendLine();
-                sb.AppendLine("--- CommandText ---");
-                sb.AppendLine(command.CommandText);
-                sb.AppendLine("--- Parameters ---");
-                foreach (IDbDataParameter item in command.Parameters)
+                var logging = command as LoggingCommand;
+                if (logging != null)
                 {
-                    sb.Append(item.ParameterName).Append("(").Append(item.DbType).Append(")=").Append(item.Value).AppendLine();
+                    return (TCommand)logging.BaseCommand;
                 }
-                Logger.Trace(sb.ToString());
+                return (TCommand)command;
             }
-        }
-
-        internal static void Trace(Func<string> message, IDbCommand command, Stopwatch stopwatch)
-        {
-            if (Logger.IsTraceEnabled)
+            catch (InvalidCastException)
             {
-                Trace(message(), command, stopwatch);
+                return default(TCommand);
             }
         }
 
@@ -148,6 +103,68 @@ namespace DbLoggingWrapper
             var sb = new StringBuilder();
             Dump(command, sb);
             return sb.ToString();
+        }
+
+        internal static void Error(object wrapper, string message, Exception ex)
+        {
+            if (Logger.IsErrorEnabled)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine(message);
+                sb.Append(wrapper.ToString());
+                Logger.Error(sb.ToString(), ex);
+            }
+        }
+
+        internal static void Error(object wrapper, Func<string> message, Exception ex)
+        {
+            if (Logger.IsErrorEnabled)
+            {
+                Error(wrapper, message(), ex);
+            }
+        }
+
+        internal static void Trace(string message)
+        {
+            Logger.Trace(message);
+        }
+
+        internal static void Trace(string message, Stopwatch stopwatch)
+        {
+            Logger.Trace(f => f("{0} 実行時間:{1}", message, stopwatch.Elapsed));
+        }
+
+        internal static void Trace(Func<string> message, Stopwatch stopwatch)
+        {
+            if (Logger.IsTraceEnabled)
+            {
+                Trace(message(), stopwatch);
+            }
+        }
+
+        internal static void Trace(string message, IDbCommand command, Stopwatch stopwatch)
+        {
+            if (Logger.IsTraceEnabled)
+            {
+                var sb = new StringBuilder(message);
+                sb.Append(" 実行時間:").Append(stopwatch.Elapsed).AppendLine();
+                sb.AppendLine("--- CommandText ---");
+                sb.AppendLine(command.CommandText);
+                sb.AppendLine("--- Parameters ---");
+                foreach (IDbDataParameter item in command.Parameters)
+                {
+                    sb.Append(item.ParameterName).Append("(").Append(item.DbType).Append(")=").Append(item.Value).AppendLine();
+                }
+                Logger.Trace(sb.ToString());
+            }
+        }
+
+        internal static void Trace(Func<string> message, IDbCommand command, Stopwatch stopwatch)
+        {
+            if (Logger.IsTraceEnabled)
+            {
+                Trace(message(), command, stopwatch);
+            }
         }
     }
 }

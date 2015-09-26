@@ -159,5 +159,16 @@ p\(String\)=abc
                 Assert.Equal("コマンドが破棄(Dispose)されました。", logger.Last.Message);
             }
         }
+
+        [Fact]
+        public void BindByName()
+        {
+            var con = new Oracle.ManagedDataAccess.Client.OracleConnection();
+            var cmd = con.CreateCommand();
+            var wcon = new LoggingConnection(con);
+            var wcmd = wcon.CreateCommand();
+            Assert.False(cmd.BindByName);
+            Assert.True(wcmd.TryCast<Oracle.ManagedDataAccess.Client.OracleCommand>().BindByName);
+        }
     }
 }

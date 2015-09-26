@@ -93,7 +93,9 @@ namespace DbLoggingWrapper
 
         public IDbCommand CreateCommand()
         {
-            return new LoggingCommand(BaseConnection.CreateCommand());
+            var command = BaseConnection.CreateCommand();
+            LoggingCommand.SetBindByName(command);
+            return new LoggingCommand(command);
         }
 
         public void Dispose()

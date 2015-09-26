@@ -1,11 +1,24 @@
 ﻿using System;
+#if NET40
+using System.Collections.Concurrent;
+#else
+using System.Collections.Generic;
+#endif
 using System.Data;
 using System.Diagnostics;
+using System.Reflection;
+using System.Reflection.Emit;
 
 namespace DbLoggingWrapper
 {
     public class LoggingCommand : IDbCommand
     {
+#if NET40
+        private static ConcurrentDictionary<Type, Action<IDbCommand>> _bindByName = new ConcurrentDictionary<Type, Action<IDbCommand>>();
+#else
+        private static Dictionary<Type, Action<IDbCommand>> _bindByName = new Dictionary<Type, Action<IDbCommand>>();
+#endif
+
         public LoggingCommand(IDbCommand command)
         {
             BaseCommand = command;
@@ -176,6 +189,62 @@ namespace DbLoggingWrapper
         public override string ToString()
         {
             return LoggingWrapper.Dump(BaseCommand);
+        }
+
+        internal static void SetBindByName(IDbCommand command)
+        {
+#if NET40
+            var setBindByName = _bindByName.GetOrAdd(command.GetType(), cmdType =>
+            {
+                var propertyInfo = cmdType.GetProperty("BindByName", BindingFlags.Instance | BindingFlags.Public);
+                if (propertyInfo != null && propertyInfo.CanWrite)
+                {
+                    var setMethod = propertyInfo.GetSetMethod();
+                    if (setMethod != null)
+                    {
+                        var method = new DynamicMethod("SetBindByName_", null, new[] { typeof(IDbCommand) });
+                        var il = method.GetILGenerator();
+                        il.Emit(OpCodes.Ldarg_0);
+                        il.Emit(OpCodes.Castclass, cmdType);
+                        il.Emit(OpCodes.Ldc_I4_1);
+                        il.EmitCall(OpCodes.Callvirt, setMethod, null);
+                        il.Emit(OpCodes.Ret);
+                        return (Action<IDbCommand>)method.CreateDelegate(typeof(Action<IDbCommand>));
+                    }
+                }
+                return null;
+            });
+#else
+            Action<IDbCommand> setBindByName = null;
+            lock (_bindByName)
+            {
+                if (!_bindByName.TryGetValue(command.GetType(), out setBindByName))
+                {
+                    var cmdType = command.GetType();
+                    var propertyInfo = cmdType.GetProperty("BindByName", BindingFlags.Instance | BindingFlags.Public);
+                    if (propertyInfo != null && propertyInfo.CanWrite)
+                    {
+                        var setMethod = propertyInfo.GetSetMethod();
+                        if (setMethod != null)
+                        {
+                            var method = new DynamicMethod("SetBindByName_", null, new[] { typeof(IDbCommand) });
+                            var il = method.GetILGenerator();
+                            il.Emit(OpCodes.Ldarg_0);
+                            il.Emit(OpCodes.Castclass, cmdType);
+                            il.Emit(OpCodes.Ldc_I4_1);
+                            il.EmitCall(OpCodes.Callvirt, setMethod, null);
+                            il.Emit(OpCodes.Ret);
+                            setBindByName = (Action<IDbCommand>)method.CreateDelegate(typeof(Action<IDbCommand>));
+                            _bindByName.Add(cmdType, setBindByName);
+                        }
+                    }
+                }
+            }
+#endif
+            if (setBindByName != null)
+            {
+                setBindByName.Invoke(command);
+            }
         }
     }
 }

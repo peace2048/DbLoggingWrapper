@@ -20,7 +20,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NET35</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -49,6 +49,18 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\DbLoggingWrapper40\LoggingCommand.cs">
+      <Link>LoggingCommand.cs</Link>
+    </Compile>
+    <Compile Include="..\DbLoggingWrapper40\LoggingConnection.cs">
+      <Link>LoggingConnection.cs</Link>
+    </Compile>
+    <Compile Include="..\DbLoggingWrapper40\LoggingTransaction.cs">
+      <Link>LoggingTransaction.cs</Link>
+    </Compile>
+    <Compile Include="..\DbLoggingWrapper40\LoggingWrapper.cs">
+      <Link>LoggingWrapper.cs</Link>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
