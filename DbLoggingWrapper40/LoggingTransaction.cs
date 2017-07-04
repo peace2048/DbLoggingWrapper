@@ -1,79 +1,68 @@
 ﻿using System;
 using System.Data;
+using System.Data.Common;
 using System.Diagnostics;
 
 namespace DbLoggingWrapper
 {
-    public class LoggingTransaction : IDbTransaction
+    public class LoggingTransaction : DbTransaction
     {
-        public LoggingTransaction(IDbTransaction transaction)
+        private readonly DbTransaction _transaction;
+        private readonly LoggingConnection _connection;
+        private ILoggingWriter _logger;
+
+        public LoggingTransaction(DbTransaction transaction, LoggingConnection connection, ILoggingWriter logger)
         {
-            BaseTransaction = transaction;
-            LoggingWrapper.Trace("トランザクションを開始しました。");
+            _transaction = RealTransaction(transaction) ?? throw new ArgumentNullException(nameof(transaction));
+            _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+            _logger = logger;
         }
 
-        public IDbTransaction BaseTransaction { get; private set; }
+        private static DbTransaction RealTransaction(DbTransaction transaction) => transaction is LoggingTransaction logging ? logging.BaseTransaction : transaction;
 
-        public IDbConnection Connection
+        public DbTransaction BaseTransaction => _transaction;
+
+        protected override DbConnection DbConnection => _connection;
+
+        public override IsolationLevel IsolationLevel => _transaction.IsolationLevel;
+
+        public override void Commit()
         {
-            get { return BaseTransaction.Connection; }
-        }
-
-        public IsolationLevel IsolationLevel
-        {
-            get { return BaseTransaction.IsolationLevel; }
-        }
-
-        private bool _isExecutedCommitOrRollback = false;
-
-        public void Commit()
-        {
+            var sw = Stopwatch.StartNew();
             try
             {
-                var sw = Stopwatch.StartNew();
-                BaseTransaction.Commit();
-                LoggingWrapper.Trace("トランザクションをコミットしました。", sw);
-                _isExecutedCommitOrRollback = true;
+                _transaction.Commit();
+                try { _logger.CommitSuccessful(sw.Elapsed, _transaction); } catch { }
             }
             catch (Exception ex)
             {
-                LoggingWrapper.Error(this, "コミットに失敗", ex);
+                try { _logger.CommitFailed(sw.Elapsed, _transaction, ex); } catch { }
                 throw;
             }
         }
 
-        public void Dispose()
+        public override void Rollback()
         {
-            BaseTransaction.Dispose();
-            if (_isExecutedCommitOrRollback)
-            {
-                LoggingWrapper.Trace("トランザクションが破棄(Dispose)されました。");
-            }
-            else
-            {
-                LoggingWrapper.Logger.Error("コミットもロールバックも実行されずに、トランザクションが破棄(Dispose)されました。", null);
-            }
-        }
-
-        public void Rollback()
-        {
+            var sw = Stopwatch.StartNew();
             try
             {
-                var sw = Stopwatch.StartNew();
-                BaseTransaction.Rollback();
-                LoggingWrapper.Trace("トランザクションをロールバックしました。", sw);
-                _isExecutedCommitOrRollback = true;
+                _transaction.Rollback();
+                try { _logger.RollbackSuccessful(sw.Elapsed, _transaction); } catch { }
             }
             catch (Exception ex)
             {
-                LoggingWrapper.Error(this, "ロールバックに失敗", ex);
+                try { _logger.RollbackFailed(sw.Elapsed, _transaction, ex); } catch { }
                 throw;
             }
         }
 
-        public override string ToString()
+        protected override void Dispose(bool disposing)
         {
-            return LoggingWrapper.Dump(BaseTransaction);
+            if (disposing)
+            {
+                _transaction.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }

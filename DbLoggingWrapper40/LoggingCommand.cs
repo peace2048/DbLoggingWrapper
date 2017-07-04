@@ -1,250 +1,249 @@
 ﻿using System;
-#if NET40
+#if NET40 || NET46
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 #else
 using System.Collections.Generic;
 #endif
 using System.Data;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Threading;
 
 namespace DbLoggingWrapper
 {
-    public class LoggingCommand : IDbCommand
+    public partial class LoggingCommand : DbCommand
     {
-#if NET40
-        private static ConcurrentDictionary<Type, Action<IDbCommand>> _bindByName = new ConcurrentDictionary<Type, Action<IDbCommand>>();
+#if NET40 || NET46
+        private static ConcurrentDictionary<Type, Action<IDbCommand, bool>> _bindByNameCache = new ConcurrentDictionary<Type, Action<IDbCommand, bool>>();
 #else
-        private static Dictionary<Type, Action<IDbCommand>> _bindByName = new Dictionary<Type, Action<IDbCommand>>();
+        private static Dictionary<Type, Action<IDbCommand, bool>> _bindByNameCache = new Dictionary<Type, Action<IDbCommand, bool>>();
 #endif
 
-        public LoggingCommand(IDbCommand command)
+        private readonly DbCommand _command;
+        private readonly ILoggingWriter _logger;
+        private DbConnection _connection;
+        private DbTransaction _transaction;
+        private bool _bindByName;
+
+
+        public LoggingCommand(DbCommand command, DbConnection connection, ILoggingWriter logger)
         {
-            BaseCommand = command;
+            _command = RealCommand(command) ?? throw new ArgumentNullException(nameof(command));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _connection = connection;
         }
 
-        public IDbCommand BaseCommand { get; private set; }
+        private DbCommand RealCommand(DbCommand command) => command is LoggingCommand logging ? logging.BaseCommand : command;
 
-        public string CommandText
-        {
-            get { return BaseCommand.CommandText; }
-            set { BaseCommand.CommandText = value; }
-        }
+        public DbCommand BaseCommand => _command;
 
-        public int CommandTimeout
-        {
-            get { return BaseCommand.CommandTimeout; }
-            set { BaseCommand.CommandTimeout = value; }
-        }
+        public override string CommandText { get => _command.CommandText; set => _command.CommandText = value; }
 
-        public CommandType CommandType
-        {
-            get { return BaseCommand.CommandType; }
-            set { BaseCommand.CommandType = value; }
-        }
+        public override int CommandTimeout { get => _command.CommandTimeout; set => _command.CommandTimeout = value; }
 
-        public IDbConnection Connection
+        public override CommandType CommandType { get => _command.CommandType; set => _command.CommandType = value; }
+
+        protected override DbConnection DbConnection
         {
-            get
-            {
-                return BaseCommand.Connection;
-            }
+            get => _connection;
             set
             {
-                var logging = value as LoggingConnection;
-                BaseCommand.Connection = logging == null ? value : logging.BaseConnection;
+                _connection = value;
+                _command.Connection = value is LoggingConnection logging ? logging.BaseConnection : value;
             }
         }
 
-        public IDataParameterCollection Parameters
-        {
-            get { return BaseCommand.Parameters; }
-        }
+        protected override DbParameterCollection DbParameterCollection => _command.Parameters;
 
-        public IDbTransaction Transaction
+        protected override DbTransaction DbTransaction
         {
-            get
-            {
-                return BaseCommand.Transaction;
-            }
+            get => _transaction;
             set
             {
-                var logging = value as LoggingTransaction;
-                BaseCommand.Transaction = logging == null ? value : logging.BaseTransaction;
+                _transaction = value;
+                _command.Transaction = _transaction is LoggingTransaction logging ? logging.BaseTransaction : _transaction;
             }
         }
 
-        public UpdateRowSource UpdatedRowSource
-        {
-            get { return BaseCommand.UpdatedRowSource; }
-            set { BaseCommand.UpdatedRowSource = value; }
-        }
+        public override bool DesignTimeVisible { get => _command.DesignTimeVisible; set => _command.DesignTimeVisible = value; }
 
-        public void Cancel()
+        public override UpdateRowSource UpdatedRowSource { get => _command.UpdatedRowSource; set => _command.UpdatedRowSource = value; }
+
+        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
         {
+            var sw = Stopwatch.StartNew();
             try
             {
-                var sw = Stopwatch.StartNew();
-                BaseCommand.Cancel();
-                LoggingWrapper.Trace("コマンドをキャンセルしました。", sw);
+                var reader = _command.ExecuteReader(behavior);
+                try { _logger.ExecuteReaderSuccessful(sw.Elapsed, _command); } catch { }
+                return new LoggingDataReader(reader, _logger);
             }
             catch (Exception ex)
             {
-                LoggingWrapper.Error(this, "キャンセルに失敗", ex);
+                try { _logger.ExecuteReaderFailed(sw.Elapsed, _command, ex); } catch { }
                 throw;
             }
         }
 
-        public IDbDataParameter CreateParameter()
+        public override int ExecuteNonQuery()
         {
-            return BaseCommand.CreateParameter();
-        }
-
-        public void Dispose()
-        {
-            BaseCommand.Dispose();
-            LoggingWrapper.Trace("コマンドが破棄(Dispose)されました。");
-        }
-
-        public int ExecuteNonQuery()
-        {
+            var sw = Stopwatch.StartNew();
             try
             {
-                var sw = Stopwatch.StartNew();
-                var result = BaseCommand.ExecuteNonQuery();
-                LoggingWrapper.Trace(() => string.Format("ExecuteNonQuery. result={0}", result), BaseCommand, sw);
+                var result = _command.ExecuteNonQuery();
+                try { _logger.ExecuteNonQuerySuccessful(sw.Elapsed, _command, result); } catch { }
                 return result;
             }
             catch (Exception ex)
             {
-                LoggingWrapper.Error(this, "クエリ実行に失敗", ex);
+                try { _logger.ExecuteNonQueryFailed(sw.Elapsed, _command, ex); } catch { }
                 throw;
             }
         }
 
-        public IDataReader ExecuteReader(CommandBehavior behavior)
+        public override object ExecuteScalar()
         {
+            var sw = Stopwatch.StartNew();
             try
             {
-                var sw = Stopwatch.StartNew();
-                var result = BaseCommand.ExecuteReader(behavior);
-                LoggingWrapper.Trace(() => string.Format("ExecuteReader({0}).", behavior), BaseCommand, sw);
+                var result = _command.ExecuteScalar();
+                try { _logger.ExecuteScalarSuccessful(sw.Elapsed, _command, result); } catch { }
                 return result;
             }
             catch (Exception ex)
             {
-                LoggingWrapper.Error(this, "クエリ実行に失敗", ex);
+                try { _logger.ExecuteScalarFailed(sw.Elapsed, _command, ex); } catch { }
                 throw;
             }
         }
 
-        public IDataReader ExecuteReader()
+#if NET46
+        protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
         {
+            var sw = Stopwatch.StartNew();
             try
             {
-                var sw = Stopwatch.StartNew();
-                var result = BaseCommand.ExecuteReader();
-                LoggingWrapper.Trace("ExecuteReader.", BaseCommand, sw);
+                var reader = await _command.ExecuteReaderAsync(behavior, cancellationToken).ConfigureAwait(false);
+                try { _logger.ExecuteReaderSuccessful(sw.Elapsed, _command); } catch { }
+                return new LoggingDataReader(reader, _logger);
+            }
+            catch (Exception ex)
+            {
+                try { _logger.ExecuteReaderFailed(sw.Elapsed, _command, ex); } catch { }
+                throw;
+            }
+        }
+
+        public override async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
+        {
+            var sw = Stopwatch.StartNew();
+            try
+            {
+                var result = await _command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                try { _logger.ExecuteNonQuerySuccessful(sw.Elapsed, _command, result); } catch { }
                 return result;
             }
             catch (Exception ex)
             {
-                LoggingWrapper.Error(this, "クエリ実行に失敗", ex);
+                try { _logger.ExecuteNonQueryFailed(sw.Elapsed, _command, ex); } catch { }
                 throw;
             }
         }
 
-        public object ExecuteScalar()
+        public override async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
         {
+            var sw = Stopwatch.StartNew();
             try
             {
-                var sw = Stopwatch.StartNew();
-                var result = BaseCommand.ExecuteScalar();
-                LoggingWrapper.Trace(() => string.Format("ExecuteScalar. result={0}", result), BaseCommand, sw);
+                var result = await _command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+                try { _logger.ExecuteScalarSuccessful(sw.Elapsed, _command, result); } catch { }
                 return result;
             }
             catch (Exception ex)
             {
-                LoggingWrapper.Error(this, "クエリ実行に失敗", ex);
+                try { _logger.ExecuteScalarFailed(sw.Elapsed, _command, ex); } catch { }
                 throw;
             }
         }
+#endif
 
-        public void Prepare()
+        public override void Cancel() => _command.Cancel();
+
+        public override void Prepare() => _command.Prepare();
+
+        protected override DbParameter CreateDbParameter() => _command.CreateParameter();
+
+        protected override void Dispose(bool disposing)
         {
-            try
+            if (disposing)
             {
-                var sw = Stopwatch.StartNew();
-                BaseCommand.Prepare();
-                LoggingWrapper.Trace("コマンドをコンパイル(Prepare)しました。", sw);
+                _command.Dispose();
             }
-            catch (Exception ex)
+            base.Dispose(disposing);
+        }
+
+        public bool BindByName
+        {
+            get => _bindByName;
+            set
             {
-                LoggingWrapper.Error(this, "コンパイル(Prepare)に失敗", ex);
-                throw;
+                _bindByName = value;
+                SetBindByName(_command, value);
             }
         }
 
-        public override string ToString()
+        internal static void SetBindByName(IDbCommand command, bool value)
         {
-            return LoggingWrapper.Dump(BaseCommand);
-        }
-
-        internal static void SetBindByName(IDbCommand command)
-        {
-#if NET40
-            var setBindByName = _bindByName.GetOrAdd(command.GetType(), cmdType =>
-            {
-                var propertyInfo = cmdType.GetProperty("BindByName", BindingFlags.Instance | BindingFlags.Public);
-                if (propertyInfo != null && propertyInfo.CanWrite)
-                {
-                    var setMethod = propertyInfo.GetSetMethod();
-                    if (setMethod != null)
-                    {
-                        var method = new DynamicMethod("SetBindByName_", null, new[] { typeof(IDbCommand) });
-                        var il = method.GetILGenerator();
-                        il.Emit(OpCodes.Ldarg_0);
-                        il.Emit(OpCodes.Castclass, cmdType);
-                        il.Emit(OpCodes.Ldc_I4_1);
-                        il.EmitCall(OpCodes.Callvirt, setMethod, null);
-                        il.Emit(OpCodes.Ret);
-                        return (Action<IDbCommand>)method.CreateDelegate(typeof(Action<IDbCommand>));
-                    }
-                }
-                return null;
-            });
+#if NET40 || NET46
+            var setBindByName = _bindByNameCache.GetOrAdd(command.GetType(), commandType => CreateBindByNameSetter(commandType));
 #else
-            Action<IDbCommand> setBindByName = null;
-            lock (_bindByName)
+            Action<IDbCommand, bool> setBindByName = null;
+            var commandType = command.GetType();
+            lock (_bindByNameCache)
             {
-                if (!_bindByName.TryGetValue(command.GetType(), out setBindByName))
+                if (!_bindByNameCache.TryGetValue(commandType, out setBindByName))
                 {
-                    var cmdType = command.GetType();
-                    var propertyInfo = cmdType.GetProperty("BindByName", BindingFlags.Instance | BindingFlags.Public);
-                    if (propertyInfo != null && propertyInfo.CanWrite)
+                    setBindByName = CreateBindByNameSetter(commandType);
+                    if (setBindByName != null)
                     {
-                        var setMethod = propertyInfo.GetSetMethod();
-                        if (setMethod != null)
-                        {
-                            var method = new DynamicMethod("SetBindByName_", null, new[] { typeof(IDbCommand) });
-                            var il = method.GetILGenerator();
-                            il.Emit(OpCodes.Ldarg_0);
-                            il.Emit(OpCodes.Castclass, cmdType);
-                            il.Emit(OpCodes.Ldc_I4_1);
-                            il.EmitCall(OpCodes.Callvirt, setMethod, null);
-                            il.Emit(OpCodes.Ret);
-                            setBindByName = (Action<IDbCommand>)method.CreateDelegate(typeof(Action<IDbCommand>));
-                            _bindByName.Add(cmdType, setBindByName);
-                        }
+                        _bindByNameCache.Add(commandType, setBindByName);
                     }
                 }
             }
 #endif
             if (setBindByName != null)
             {
-                setBindByName.Invoke(command);
+                setBindByName.Invoke(command, value);
             }
+        }
+
+        private static Action<IDbCommand, bool> CreateBindByNameSetter(Type commandType)
+        {
+            try
+            {
+                var pinfo = commandType.GetProperty("BindByName", BindingFlags.Instance | BindingFlags.Public);
+                if (pinfo != null && pinfo.CanWrite)
+                {
+                    var setter = pinfo.GetSetMethod();
+                    if (setter != null)
+                    {
+                        var method = new DynamicMethod(commandType.Name + "_set_BindByName", null, new[] { typeof(IDbCommand), typeof(bool) });
+                        var il = method.GetILGenerator();
+                        il.Emit(OpCodes.Ldarg_0);
+                        il.Emit(OpCodes.Castclass, commandType);
+                        il.Emit(OpCodes.Ldarg_1);
+                        il.EmitCall(OpCodes.Callvirt, setter, null);
+                        il.Emit(OpCodes.Ret);
+                        return (Action<IDbCommand, bool>)method.CreateDelegate(typeof(Action<IDbCommand, bool>));
+                    }
+                }
+            }
+            catch { }
+
+            return null;
         }
     }
 }
