@@ -32,92 +32,92 @@ namespace DbLoggingWrapper
         public Common.Logging.ILog Logger { get => _logger; set => _logger = value; }
 
 
-        public void BeginTransactionFailed(DbConnection connection, Exception ex)
+        public virtual void BeginTransactionFailed(DbConnection connection, Exception ex)
         {
             _logger.Error($"Begin transaction failed.\n{connection.ConnectionString}", ex);
         }
 
-        public void BeginTransactionSuccessful(DbConnection connection, DbTransaction transaction)
+        public virtual void BeginTransactionSuccessful(DbConnection connection, DbTransaction transaction)
         {
             _logger.Trace($"Begin transaction. {connection.ConnectionString}");
         }
 
-        public void ChangeDatabaseFailed(TimeSpan elapsed, DbConnection connection, string databaseName, Exception ex)
+        public virtual void ChangeDatabaseFailed(TimeSpan elapsed, DbConnection connection, string databaseName, Exception ex)
         {
             _logger.Error($"Change database failed. database name is {databaseName}.", ex);
         }
 
-        public void ChangeDatabaseSuccessful(TimeSpan elapsed, DbConnection connection, string databaseName)
+        public virtual void ChangeDatabaseSuccessful(TimeSpan elapsed, DbConnection connection, string databaseName)
         {
             _logger.Trace($"Databse changed. new database is {databaseName}. {Dump(elapsed)} elapsed.");
         }
 
-        public void CloseFailed(DbConnection connection, Exception ex)
+        public virtual void CloseFailed(DbConnection connection, Exception ex)
         {
             _logger.Error($"Close connection failed. {connection.ConnectionString}", ex);
         }
 
-        public void CloseSuccessful(DbConnection connection)
+        public virtual void CloseSuccessful(DbConnection connection)
         {
             _logger.Trace($"Connection closed. {connection.ConnectionString}");
         }
 
-        public void CommitFailed(TimeSpan elapsed, DbTransaction transaction, Exception ex)
+        public virtual void CommitFailed(TimeSpan elapsed, DbTransaction transaction, Exception ex)
         {
             _logger.Error($"Commit transaction failed.", ex);
         }
 
-        public void CommitSuccessful(TimeSpan elapsed, DbTransaction transaction)
+        public virtual void CommitSuccessful(TimeSpan elapsed, DbTransaction transaction)
         {
             _logger.Trace($"Transaction commited. {Dump(elapsed)} elapsed.");
         }
 
-        public void ExecuteNonQueryFailed(TimeSpan elapsed, DbCommand command, Exception ex)
+        public virtual void ExecuteNonQueryFailed(TimeSpan elapsed, DbCommand command, Exception ex)
         {
             _logger.Error($"Execute non query faild. {Dump(elapsed)} elapsed.{Dump(command)}", ex);
         }
 
-        public void ExecuteNonQuerySuccessful(TimeSpan elapsed, DbCommand command, int result)
+        public virtual void ExecuteNonQuerySuccessful(TimeSpan elapsed, DbCommand command, int result)
         {
             _logger.Trace($"Executed non query. {result} records processed. {Dump(elapsed)} elapsed.{Dump(command)}");
         }
 
-        public void ExecuteReaderFailed(TimeSpan elapsed, DbCommand command, Exception ex)
+        public virtual void ExecuteReaderFailed(TimeSpan elapsed, DbCommand command, Exception ex)
         {
             _logger.Error($"Execute reader failed. {Dump(elapsed)} elapsed.{Dump(command)}", ex);
         }
 
-        public void ExecuteReaderSuccessful(TimeSpan elapsed, DbCommand command)
+        public virtual void ExecuteReaderSuccessful(TimeSpan elapsed, DbCommand command)
         {
             _logger.Trace($"Executed reader. {Dump(elapsed)} elapsed.{Dump(command)}");
         }
 
-        public void ExecuteScalarFailed(TimeSpan elapsed, DbCommand command, Exception ex)
+        public virtual void ExecuteScalarFailed(TimeSpan elapsed, DbCommand command, Exception ex)
         {
             _logger.Error($"Execute scalar failed. {Dump(elapsed)} elapsed.{Dump(command)}", ex);
         }
 
-        public void ExecuteScalarSuccessful(TimeSpan elapsed, DbCommand command, object result)
+        public virtual void ExecuteScalarSuccessful(TimeSpan elapsed, DbCommand command, object result)
         {
             _logger.Trace($"Executed scalar. result={result}, {Dump(elapsed)} elapsed.{Dump(command)}");
         }
 
-        public void OpenFailed(TimeSpan elapsed, DbConnection connection, Exception ex)
+        public virtual void OpenFailed(TimeSpan elapsed, DbConnection connection, Exception ex)
         {
             _logger.Error($"Open connection failed. {Dump(elapsed)} elapsed. {connection.ConnectionString}", ex);
         }
 
-        public void OpenSuccessful(TimeSpan elapsed, DbConnection connection)
+        public virtual void OpenSuccessful(TimeSpan elapsed, DbConnection connection)
         {
             _logger.Trace($"Open connection. {Dump(elapsed)} elapsed.");
         }
 
-        public void RollbackFailed(TimeSpan elapsed, DbTransaction transaction, Exception ex)
+        public virtual void RollbackFailed(TimeSpan elapsed, DbTransaction transaction, Exception ex)
         {
             _logger.Error($"Rollback transaction failed.", ex);
         }
 
-        public void RollbackSuccessful(TimeSpan elapsed, DbTransaction transaction)
+        public virtual void RollbackSuccessful(TimeSpan elapsed, DbTransaction transaction)
         {
             _logger.Warn($"Rollback transaction successed.");
         }
